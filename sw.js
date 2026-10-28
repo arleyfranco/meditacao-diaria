@@ -1,5 +1,5 @@
-const CACHE='meditacao-diaria-v3';
+const CACHE='meditacao-diaria-v4';
 const ASSETS=['./','./index.html','./styles.css','./data.js','./manifest.webmanifest'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))),self.clients.claim()])));
-self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(u.pathname.endsWith('/app.js')||u.hostname.includes('supabase.co')||u.hostname.includes('jsdelivr.net')){e.respondWith(fetch(e.request,{cache:'no-store'}).catch(()=>caches.match(e.request)));return}e.respondWith(fetch(e.request).then(r=>{if(e.request.method==='GET'&&u.origin===location.origin){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy))}return r}).catch(()=>caches.match(e.request))) });
+self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.headers.has('range')||e.request.destination==='audio')return;if(u.pathname.endsWith('/app.js')||u.hostname.includes('supabase.co')||u.hostname.includes('jsdelivr.net')){e.respondWith(fetch(e.request,{cache:'no-store'}).catch(()=>caches.match(e.request)));return}e.respondWith(fetch(e.request).then(r=>{if(e.request.method==='GET'&&u.origin===location.origin){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy))}return r}).catch(()=>caches.match(e.request))) });
