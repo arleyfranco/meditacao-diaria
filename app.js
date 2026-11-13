@@ -5,6 +5,14 @@ app.addEventListener('error',e=>{if(e.target.tagName==='AUDIO'){const message=e.
 function paragraphs(text){return String(text||'').trim().split(/\n\s*\n/).filter(Boolean).map(p=>'<p class="meditation">'+esc(p)+'</p>').join('')}
 const bookUrl='https://hotmart.com/pt-br/marketplace/produtos/jesus-o-amigo-dos-excluidos/G108360030J';
 const bookInvitation='Onde muitos passavam de longe, Jesus parava e se aproximava. Descubra o que esses encontros nos ensinam sobre acolher quem se sente deixado de lado.';
+const shareCoverPath='assets/capa-jesus-amigo-dos-excluidos.jpg';
+let shareCoverFile;
+if(typeof navigator.share==='function'&&typeof navigator.canShare==='function'){
+  fetch(shareCoverPath).then(response=>{
+    if(!response.ok)throw new Error('Capa indisponível');
+    return response.blob();
+  }).then(blob=>{shareCoverFile=new File([blob],'Jesus-o-Amigo-dos-Excluidos.jpg',{type:'image/jpeg'})}).catch(()=>{});
+}
 function bookRecommendation(){return `
 <aside class="book-recommendation" aria-labelledby="book-title">
   <img src="assets/jesus-amigo-dos-excluidos.webp" width="400" height="600" loading="lazy" alt="Capa do livro Jesus, o Amigo dos Excluídos, de A. Arley Franco">
@@ -15,5 +23,42 @@ function bookRecommendation(){return `
     <a class="btn" href="${bookUrl}" target="_blank" rel="noopener">Conhecer o livro</a>
   </div>
 </aside>`}
-function card(d,showBook=false){if(!d)return '<div class="empty">Nenhuma meditação disponível.</div>';const compact=!d.challenge&&!d.prayer;return `<article class="card"><div class="date">${esc(d.date)}</div><h2>${esc(d.title)}</h2>${!compact&&d.verse?'<div class="verse">'+esc(d.verse)+'</div>':''}${audioPlayer(d)}${compact?'':'<div class="section-title">Meditação</div>'}${paragraphs(d.meditation)}${d.challenge?'<div class="section-title">Desafio</div>'+paragraphs(d.challenge):''}${d.prayer?'<div class="section-title">Oração</div>'+paragraphs(d.prayer):''}${showBook===true?bookRecommendation():''}<div class="actions"><button class="btn" onclick="toggleFav('${d.id}')">${favorites.includes(d.id)?'Remover dos favoritos':'Salvar nos favoritos'}</button><button class="btn secondary" onclick="shareDev('${d.id}')">Compartilhar</button></div></article>`}
-function render(){document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));if(view==='today')app.innerHTML=card(todayDev(),true);if(view==='series'){const ss=D.series.filter(s=>s.active!==false);app.innerHTML=`<h2>Séries</h2><div class="series-grid">${ss.map(s=>`<article class="card series-card" onclick="openSeries('${s.id}')"><h3>${esc(s.title)}</h3><p>${esc(s.subtitle||'')}</p></article>`).join('')}</div>`}if(view==='search')app.innerHTML=`<h2>Buscar</h2><input type="search" id="q" placeholder="Busque por título, versículo ou palavra…" oninput="doSearch(this.value)"><div id="results" class="empty">Digite uma palavra para buscar nas meditações.</div>`;if(view==='favorites'){let ds=D.devotionals.filter(d=>released(d)&&favorites.includes(d.id));app.innerHTML=`<h2>Favoritos</h2>${ds.length?ds.map(card).join(''):'<div class="empty">Você ainda não salvou nenhuma meditação.</div>'}`}if(view==='more')app.innerHTML=`<article class="card"><h2>Sobre</h2><p class="meditation">Meditação Diária com Pr. Arley Franco. Uma Palavra para cada dia. Um momento com Deus para fortalecer sua caminhada.</p></article>`}function toggleFav(id){favorites=favorites.includes(id)?favorites.filter(x=>x!==id):[...favorites,id];localStorage.setItem(favKey,JSON.stringify(favorites));render()}function shareDev(id){let d=D.devotionals.find(x=>x.id===id);if(!d||!released(d))return;let text=`${d.date} — ${d.title}\n\n${[d.verse,d.meditation].filter(Boolean).join('\n\n')}\n\nLeia a Meditação Diária: https://arleyfranco.github.io/meditacao-diaria/\n\nConheça meu livro JESUS, O Amigo dos Excluídos\n\n${bookInvitation}\n\n${bookUrl}`;navigator.share?navigator.share({title:d.title,text}):navigator.clipboard.writeText(text).then(()=>alert('Meditação copiada.'))}function openSeries(id){let s=D.series.find(x=>x.id===id),ds=D.devotionals.filter(d=>d.series===id&&released(d));app.innerHTML=`<button class="btn secondary" onclick="view='series';render()">Voltar</button><h2>${esc(s?.title||'Série')}</h2><p>${esc(s?.subtitle||'')}</p>${ds.length?ds.map(card).join(''):'<div class="empty">Esta série ainda não possui meditações liberadas.</div>'}`}function doSearch(q){q=q.toLowerCase().trim();let ds=q?D.devotionals.filter(d=>released(d)&&Object.values(d).join(' ').toLowerCase().includes(q)):[];document.querySelector('#results').innerHTML=ds.length?ds.map(card).join(''):'Nenhuma meditação encontrada.'}document.querySelectorAll('.bottom-nav button').forEach(b=>b.onclick=()=>{view=b.dataset.view;render()});if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');render();loadRemote();
+function card(d,showBook=false){if(!d)return '<div class="empty">Nenhuma meditação disponível.</div>';const compact=!d.challenge&&!d.prayer;return `<article class="card"><div class="date">${esc(d.date)}</div><h2>${esc(d.title)}</h2>${!compact&&d.verse?'<div class="verse">'+esc(d.verse)+'</div>':''}${audioPlayer(d)}${compact?'':'<div class="section-title">Meditação</div>'}${paragraphs(d.meditation)}${d.challenge?'<div class="section-title">Desafio</div>'+paragraphs(d.challenge):''}${d.prayer?'<div class="section-title">Oração</div>'+paragraphs(d.prayer):''}${showBook===true?bookRecommendation():''}<div class="actions"><button class="btn" onclick="toggleFav('${d.id}')">${favorites.includes(d.id)?'Remover dos favoritos':'Salvar nos favoritos'}</button><button class="btn secondary" onclick="shareDev('${d.id}')">Compartilhar</button><button class="btn secondary" onclick="shareDev('${d.id}',true)">Compartilhar com a capa do livro</button></div></article>`}
+function render(){document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===view));if(view==='today')app.innerHTML=card(todayDev(),true);if(view==='series'){const ss=D.series.filter(s=>s.active!==false);app.innerHTML=`<h2>Séries</h2><div class="series-grid">${ss.map(s=>`<article class="card series-card" onclick="openSeries('${s.id}')"><h3>${esc(s.title)}</h3><p>${esc(s.subtitle||'')}</p></article>`).join('')}</div>`}if(view==='search')app.innerHTML=`<h2>Buscar</h2><input type="search" id="q" placeholder="Busque por título, versículo ou palavra…" oninput="doSearch(this.value)"><div id="results" class="empty">Digite uma palavra para buscar nas meditações.</div>`;if(view==='favorites'){let ds=D.devotionals.filter(d=>released(d)&&favorites.includes(d.id));app.innerHTML=`<h2>Favoritos</h2>${ds.length?ds.map(card).join(''):'<div class="empty">Você ainda não salvou nenhuma meditação.</div>'}`}if(view==='more')app.innerHTML=`<article class="card"><h2>Sobre</h2><p class="meditation">Meditação Diária com Pr. Arley Franco. Uma Palavra para cada dia. Um momento com Deus para fortalecer sua caminhada.</p></article>`}function toggleFav(id){favorites=favorites.includes(id)?favorites.filter(x=>x!==id):[...favorites,id];localStorage.setItem(favKey,JSON.stringify(favorites));render()}async function shareDev(id,withCover=false){let d=D.devotionals.find(x=>x.id===id);if(!d||!released(d))return;const text=`${d.date} — ${d.title}\n\n${[d.verse,d.meditation].filter(Boolean).join('\n\n')}\n\nLeia a Meditação Diária: https://arleyfranco.github.io/meditacao-diaria/\n\nConheça meu livro JESUS, O Amigo dos Excluídos\n\n${bookInvitation}\n\n${bookUrl}`;
+  const data={title:d.title,text};
+  if(withCover){
+    if(shareCoverFile&&navigator.canShare?.({...data,files:[shareCoverFile]})){
+      try{await navigator.share({...data,files:[shareCoverFile]});return}
+      catch(error){if(error.name==='AbortError')return}
+    }
+    showShareCoverHelp(text);
+    return;
+  }
+  try{
+    if(navigator.share)await navigator.share(data);
+    else{await navigator.clipboard.writeText(text);alert('Meditação copiada.')}
+  }catch(error){if(error.name!=='AbortError')showShareCoverHelp(text,false)}
+}
+function showShareCoverHelp(text,withCover=true){
+  const dialog=document.createElement('dialog');
+  dialog.className='card';
+  dialog.style.cssText='max-width:min(420px,calc(100% - 32px));margin:auto';
+  dialog.setAttribute('aria-label',withCover?'Compartilhar com a capa do livro':'Compartilhar meditação');
+  dialog.innerHTML=`<p>${withCover?'Para enviar a capa separadamente, baixe a imagem e cole o texto como legenda.':'Copie o texto abaixo para compartilhar a meditação.'}</p>
+    <div class="actions"><button class="btn" type="button">Copiar texto</button>
+    ${withCover?`<a class="btn secondary" href="${shareCoverPath}" download="Jesus-o-Amigo-dos-Excluidos.jpg" style="text-decoration:none">Baixar capa</a>`:''}
+    <form method="dialog"><button class="btn secondary">Fechar</button></form></div>
+    <p class="hint" role="status"></p>
+    <textarea hidden readonly aria-label="Texto da meditação" rows="5" style="width:100%"></textarea>`;
+  const status=dialog.querySelector('[role=status]');
+  const field=dialog.querySelector('textarea');
+  field.value=text;
+  dialog.querySelector('button').onclick=async()=>{
+    try{await navigator.clipboard.writeText(text);status.textContent='Texto copiado.'}
+    catch{field.hidden=false;field.focus();field.select();status.textContent='Selecione e copie o texto abaixo.'}
+  };
+  dialog.addEventListener('close',()=>dialog.remove(),{once:true});
+  document.body.append(dialog);
+  dialog.showModal();
+}
+function openSeries(id){let s=D.series.find(x=>x.id===id),ds=D.devotionals.filter(d=>d.series===id&&released(d));app.innerHTML=`<button class="btn secondary" onclick="view='series';render()">Voltar</button><h2>${esc(s?.title||'Série')}</h2><p>${esc(s?.subtitle||'')}</p>${ds.length?ds.map(card).join(''):'<div class="empty">Esta série ainda não possui meditações liberadas.</div>'}`}function doSearch(q){q=q.toLowerCase().trim();let ds=q?D.devotionals.filter(d=>released(d)&&Object.values(d).join(' ').toLowerCase().includes(q)):[];document.querySelector('#results').innerHTML=ds.length?ds.map(card).join(''):'Nenhuma meditação encontrada.'}document.querySelectorAll('.bottom-nav button').forEach(b=>b.onclick=()=>{view=b.dataset.view;render()});if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js');render();loadRemote();
